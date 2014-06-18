@@ -185,84 +185,72 @@ hljs.initHighlightingOnLoad();
 
 <h2>Initial Processing</h2>
 
-<p>We load the training and testing data, fit a CART model (rpart) predicting the classe variable using 12.5% of the observations (due to memory limitations), using only the variables without missing data. We save the model in a file for later use, due to the great time spent in the calculation.</p>
-
-<p>This was done beforehand twice (using the same code), getting two models, modRPART and modRPART2</p>
+<p>We load the training and testing data, fit a Random Forest model (rf) predicting the classe variable using 50% of the observations, using only the variables without missing data. We save the model in a file for later use, due to the great time spent in the calculation.</p>
 
 <pre><code class="r">library(caret)
 data &lt;- read.csv(&quot;pml-training.csv&quot;)
-data &lt;- data[, which(colSums(is.na(data)) == 0)]
+datest &lt;- read.csv(&quot;pml-testing.csv&quot;)
+removeIndex &lt;- grep(&quot;timestamp|X|user_name|new_window&quot;, names(data))
+data &lt;- data[, -removeIndex]
+datest &lt;- datest[, -removeIndex]
 
-inTrain &lt;- createDataPartition(data$classe, p = 1/8)[[1]]
+data &lt;- data[, which(colSums(is.na(datest)) == 0)]
+datest &lt;- datest[, which(colSums(is.na(datest)) == 0)]
+
+inTrain &lt;- createDataPartition(data$classe, p = 1/2)[[1]]
 training &lt;- data[inTrain, ]
-
-modRPART &lt;- train(classe ~ ., data = training, method = &quot;rpart&quot;)
-save(modRPART, file = &quot;.modRPART&quot;)
+testing &lt;- data[-inTrain, ]
 </code></pre>
 
-<p>In order to check the model, we take a small sample (0.2%) and compare the prediction and the real classe. This allows us to cross-validate, and find that the accuracy of the model. </p>
-
-<p>In modRPART we cannot distinguish between C and D, but the prediction is perfect for the other classes.</p>
-
-<p>We plot the confusion matrices of the model:</p>
-
-<pre><code class="r">load(&quot;.modRPART&quot;)
-library(caret)
-data &lt;- read.csv(&quot;pml-training.csv&quot;)
-data &lt;- data[, which(colSums(is.na(data)) == 0)]
-
-inTesting &lt;- createDataPartition(data$classe, p = 1/500)[[1]]
-testing &lt;- data[inTesting, ]
-
-pred &lt;- predict(modRPART, testing)
+<pre><code class="r">modRF &lt;- train(classe ~ ., data = training, method = &quot;rf&quot;)
+save(modRF, file = &quot;.modRF&quot;)
 </code></pre>
 
-<pre><code>## Warning: Reached total allocation of 3583Mb: see help(memory.size)
-## Warning: Reached total allocation of 3583Mb: see help(memory.size)
-## Warning: Reached total allocation of 3583Mb: see help(memory.size)
-## Warning: Reached total allocation of 3583Mb: see help(memory.size)
-</code></pre>
+<p>In order to check the model, we take the testing data (50% of total) and compare the prediction and the real classe. This allows us to cross-validate, and find that the accuracy of the model. </p>
 
-<pre><code class="r">conf &lt;- confusionMatrix(testing$classe, pred)
+<p>We compute the confusion matrices of the model with the out of sample data:</p>
 
-rm(modRPART)
+<pre><code class="r">load(&quot;.modRF&quot;)
+pred &lt;- predict(modRF, testing)
+conf &lt;- confusionMatrix(testing$classe, pred)
+
 conf
 </code></pre>
 
 <pre><code>## Confusion Matrix and Statistics
 ## 
 ##           Reference
-## Prediction  A  B  C  D  E
-##          A 12  0  0  0  0
-##          B  0  8  0  0  0
-##          C  0  0  7  0  0
-##          D  0  0  7  0  0
-##          E  0  0  0  0  8
+## Prediction    A    B    C    D    E
+##          A 2790    0    0    0    0
+##          B    6 1888    4    0    0
+##          C    0    8 1703    0    0
+##          D    0    0    6 1602    0
+##          E    0    2    0    5 1796
 ## 
 ## Overall Statistics
-##                                        
-##                Accuracy : 0.833        
-##                  95% CI : (0.686, 0.93)
-##     No Information Rate : 0.333        
-##     P-Value [Acc &gt; NIR] : 3.49e-11     
-##                                        
-##                   Kappa : 0.789        
-##  Mcnemar&#39;s Test P-Value : NA           
+##                                         
+##                Accuracy : 0.997         
+##                  95% CI : (0.996, 0.998)
+##     No Information Rate : 0.285         
+##     P-Value [Acc &gt; NIR] : &lt;2e-16        
+##                                         
+##                   Kappa : 0.996         
+##  Mcnemar&#39;s Test P-Value : NA            
 ## 
 ## Statistics by Class:
 ## 
 ##                      Class: A Class: B Class: C Class: D Class: E
-## Sensitivity             1.000     1.00    0.500       NA     1.00
-## Specificity             1.000     1.00    1.000    0.833     1.00
-## Pos Pred Value          1.000     1.00    1.000       NA     1.00
-## Neg Pred Value          1.000     1.00    0.800       NA     1.00
-## Prevalence              0.286     0.19    0.333    0.000     0.19
-## Detection Rate          0.286     0.19    0.167    0.000     0.19
-## Detection Prevalence    0.286     0.19    0.167    0.167     0.19
-## Balanced Accuracy       1.000     1.00    0.750       NA     1.00
+## Sensitivity             0.998    0.995    0.994    0.997    1.000
+## Specificity             1.000    0.999    0.999    0.999    0.999
+## Pos Pred Value          1.000    0.995    0.995    0.996    0.996
+## Neg Pred Value          0.999    0.999    0.999    0.999    1.000
+## Prevalence              0.285    0.193    0.175    0.164    0.183
+## Detection Rate          0.284    0.192    0.174    0.163    0.183
+## Detection Prevalence    0.284    0.193    0.174    0.164    0.184
+## Balanced Accuracy       0.999    0.997    0.997    0.998    1.000
 </code></pre>
 
-<p>Thus, using cross validation, we therefore estimate the out-of-sample accuracy as 83%, just like the confusion matrix shows.</p>
+<p>Thus, using cross validation, we therefore estimate the out-of-sample accuracy as 99%, just like the confusion matrix shows.</p>
 
 </body>
 
