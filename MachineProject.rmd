@@ -5,42 +5,39 @@ We will create a Machine Learning model to distinguish between
 
 ## Initial Processing
 
-We load the training and testing data, fit a CART model (rpart) predicting the classe variable using 12.5% of the observations (due to memory limitations), using only the variables without missing data. We save the model in a file for later use, due to the great time spent in the calculation.
+We load the training and testing data, fit a Random Forest model (rf) predicting the classe variable using 50% of the observations, using only the variables without missing data. We save the model in a file for later use, due to the great time spent in the calculation.
 
-This was done beforehand twice (using the same code), getting two models, modRPART and modRPART2
 
-```{r cache = TRUE, eval = FALSE}
+```{r cache = TRUE}
 library(caret)
 data <- read.csv("pml-training.csv")
-data <- data[,which(colSums(is.na(data))==0)]
+datest <- read.csv("pml-testing.csv")
+removeIndex <- grep("timestamp|X|user_name|new_window",names(data))
+data <- data[,-removeIndex]
+datest <- datest[,-removeIndex]
 
-inTrain <- createDataPartition(data$classe, p = 1/8)[[1]]
+data <- data[,which(colSums(is.na(datest))==0)]
+datest <- datest[,which(colSums(is.na(datest))==0)]
+
+inTrain <- createDataPartition(data$classe, p = 1/2)[[1]]
 training <-  data[ inTrain,]
-
-modRPART <- train(classe ~.,data=training,method="rpart")
-save(modRPART,file=".modRPART")
+testing <-  data[-inTrain,]
+```
+```{r cache=TRUE, eval=FALSE}
+modRF <- train(classe ~.,data=training,method="rf")
+save(modRF,file=".modRF")
 ```
 
-In order to check the model, we take a small sample (0.2%) and compare the prediction and the real classe. This allows us to cross-validate, and find that the accuracy of the model. 
+In order to check the model, we take the testing data (50% of total) and compare the prediction and the real classe. This allows us to cross-validate, and find that the accuracy of the model. 
 
-In modRPART we cannot distinguish between C and D, but the prediction is perfect for the other classes.
-
-We plot the confusion matrices of the model:
+We compute the confusion matrices of the model with the out of sample data:
 ```{r cache=TRUE}
-load(".modRPART")
-library(caret)
-data <- read.csv("pml-training.csv")
-data <- data[,which(colSums(is.na(data))==0)]
-
-inTesting <- createDataPartition(data$classe, p = 1/500)[[1]]
-testing <-  data[ inTesting,]
-
-pred <- predict(modRPART,testing)
+load(".modRF")
+pred <- predict(modRF,testing)
 conf <- confusionMatrix(testing$classe, pred)
 
-rm(modRPART)
 conf
 ```
 
-Thus, using cross validation, we therefore estimate the out-of-sample accuracy as 83%, just like the confusion matrix shows.
+Thus, using cross validation, we therefore estimate the out-of-sample accuracy as 99%, just like the confusion matrix shows.
 
