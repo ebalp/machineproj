@@ -1,7 +1,7 @@
 Human Activity Recognition using Machine Learning
 ========================================================
 
-We will create a Machine Learning model to distinguish between 
+We will create a Machine Learning model to distinguish between classes (A, B, C, D, E) 
 
 ## Initial Processing
 
